@@ -6,7 +6,7 @@
 ;;         Damien Cassou <damien@cassou.me>
 ;; Version: 2.0
 ;; URL: https://github.com/NicolasPetton/pass
-;; Package-Requires: ((emacs "25.1") (password-store "2.1.0") (password-store-otp "0.1.5") (f "0.17"))
+;; Package-Requires: ((emacs "25.1") (password-store "2.1.0") (password-store-otp "0.1.5"))
 ;; Created: 18 August 2022
 ;; Keywords: password-store, password, keychain
 
@@ -27,8 +27,9 @@
 
 ;; Extracted from pass.el
 
+;;; Code:
+
 (require 'password-store)
-(require 'f)
 (require 'subr-x)
 
 (defvar pass-view-mask "·············"
@@ -46,10 +47,11 @@
 This function only works when `pass-view-mode' is enabled."
   (with-current-buffer (or buffer (current-buffer))
     (when (eq major-mode 'pass-view-mode)
-      (f-no-ext (replace-regexp-in-string
-                 (format "^%s/" (f-expand (password-store-dir)))
-                 ""
-                 buffer-file-name)))))
+      (file-name-sans-versions
+       (replace-regexp-in-string
+        (format "^%s/" (expand-file-name (password-store-dir)))
+        ""
+        buffer-file-name)))))
 
 (defun pass-view-toggle-password ()
   "Enable or disable password hiding."

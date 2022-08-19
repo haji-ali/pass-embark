@@ -6,7 +6,7 @@
 ;;         Damien Cassou <damien@cassou.me>
 ;; Version: 2.0
 ;; URL: https://github.com/NicolasPetton/pass
-;; Package-Requires: ((emacs "25.1") (password-store "2.1.0") (password-store-otp "0.1.5") (f "0.17"))
+;; Package-Requires: ((emacs "28.1") (password-store "2.1.0") (password-store-otp "0.1.5"))
 ;; Created: 18 August 2022
 ;; Keywords: password-store, password, keychain
 
@@ -31,7 +31,6 @@
 (require 'password-store)
 (require 'async-completing-read)
 (require 'embark)
-(require 'f)
 (require 'subr-x)
 
 (defgroup pass-embark '()
@@ -41,10 +40,28 @@
 (defcustom pass-embark-default-action 'pass-embark-view
   "The default action to run on `pass-embark-jump'.")
 
+
+(defcustom pass-embark-username-field "username"
+  "Field name used in the files to indicate an username."
+  :group 'pass
+  :type 'string)
+
+(defface pass-embark-entry-face '((t . ()))
+  "Face for displaying pass entry names."
+  :group 'pass)
+
+(defface pass-embark-directory-face '((t . (:inherit
+                                          font-lock-function-name-face
+                                          :weight
+                                          bold)))
+  "Face for displaying password-store directory names."
+  :group 'pass)
+
+
 (defun pass-embark-view (entry)
   "Visit the ENTRY at point."
   (interactive (list (pass-embark--default-entry)))
-  (find-file (concat (f-join (password-store-dir) entry) ".gpg")))
+  (find-file (concat (file-name-concat (password-store-dir) entry) ".gpg")))
 
 (defun pass-embark--copy-field (entry field)
   "Add FIELD of ENTRY at point to kill ring."
@@ -67,30 +84,24 @@ using all fields in the entry."
       (pass-embark-copy entry)
     (pass-embark--copy-field entry field)))
 
-(defun pass-embark-copy-username (entry)
-  "Add username of entry at point to kill ring.
+(defun pass-embark-copy-username (entry &optional fallback)
+  "Add username of ENTRY at point to kill ring.
 
 If the entry does not have a username field/value within the entry, and if
-`pass-username-fallback-on-filename' is non-nil, copy the entry name instead."
+FALLBACK is non-nil, copy the entry name instead."
   (interactive
    (list
     (password-store--completing-read t)))
   (condition-case err
-      (pass-embark--copy-field pass-username-field)
+      (pass-embark--copy-field pass-embark-username-field)
     (user-error
-     (if (not pass-username-fallback-on-filename)
+     (if (not fallback)
          (signal (car err) (cdr err))) ;; rethrow
      (let ((entry-name (file-name-nondirectory entry)))
        (password-store--save-field-in-kill-ring entry entry-name "username")))))
 
-(defun pass-emark-copy-url (entry)
-  "Add url of entry at point to kill ring."
-  (interactive (list
-                (password-store--completing-read t)))
-  (pass--copy-field entry password-store-url-field))
-
 (defun pass-embark-copy-url (entry)
-  "Add url of entry at point to kill ring."
+  "Add url of ENTRY at point to kill ring."
   (interactive (list
                 (password-store--completing-read t)))
   (pass--copy-field password-store-url-field))
@@ -132,9 +143,9 @@ If the entry does not have a username field/value within the entry, and if
                (concat
                 (when dir
                   (propertize dir
-                              'face 'pass-mode-directory-face))
+                              'face 'pass-embark-directory-face))
                 (propertize file
-                            'face 'pass-mode-entry-face))))
+                            'face 'pass-embark-entry-face))))
            x))
         "find" subdir "-type" "f" "-name" "*.gpg" "-print")
        nil nil "" nil))))
