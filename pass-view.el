@@ -42,6 +42,38 @@
     map))
 (make-variable-buffer-local 'pass-view-mode-map)
 
+(defcustom pass-view-expiration-time 60
+  "Time to wait in seconds before a pass-view buffer expires.")
+
+(defvar pass-view-timer nil
+  "Timer used internally to kill old pass-view buffers.")
+
+(defvar pass-view-last-used nil
+  "Holds the last time a command was executed on the pass-view buffer.")
+(make-variable-buffer-local 'pass-view-last-used)
+
+(defun pass-view--post-command (&optional ct)
+  "Update `pass-view-last-used' to CT or current time."
+  (setq pass-view-last-used (or ct (current-time))))
+
+(defun pass-view-kill-old-buffers ()
+  "Kill old pass-view buffers.
+
+Inactive buffers will expire and eventually get killed, active ones
+will get additional life expectancy."
+  (let ((ct (current-time)))
+    (dolist (buffer (buffer-list))
+      (with-current-buffer buffer
+	(when (derived-mode-p 'pass-view-mode)
+	  (when (and
+                 (buffer-file-name) ;; Has a file
+                 (not (buffer-modified-p)) ;; not modification
+                 (> ;; Expired
+                  (float-time (time-subtract ct pass-view-last-used))
+                  pass-view-expiration-time))
+            ;; Kill buffer
+	    (kill-buffer buffer)))))))
+
 (defun pass-view-entry-name (&optional buffer)
   "Return the entry name for BUFFER.
 This function only works when `pass-view-mode' is enabled."
@@ -180,6 +212,11 @@ This function also binds a couple of handy OTP related key-bindings to
   (pass-view--prepare-otp)
   (setq-local font-lock-defaults '(pass-view-font-lock-keywords t))
   (font-lock-mode 1)
+  (add-hook 'post-command-hook 'pass-view--post-command nil t)
+  (when (not pass-view-timer)
+    (setq pass-view-timer (run-at-time pass-view-expiration-time
+                                       pass-view-expiration-time
+                                       'pass-view-kill-old-buffers)))
   (message
    (substitute-command-keys
     "Press <\\[pass-view-toggle-password]> to display & edit the password")))
