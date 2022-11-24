@@ -138,7 +138,10 @@ FALLBACK is non-nil, copy the entry name instead."
           (mapcar
            (lambda (y)
              (let* ((entry (string-trim-left y (regexp-quote subdir)))
-                    (dir (string-trim-left (file-name-directory entry) "/"))
+                    (file-dir (file-name-directory entry))
+                    (dir (if file-dir
+                             (string-trim-left file-dir "/")
+                           ""))
                     (file (string-trim-left (file-name-base entry) "/")))
                (concat
                 (when dir
